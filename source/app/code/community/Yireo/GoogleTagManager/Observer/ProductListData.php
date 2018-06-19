@@ -29,6 +29,11 @@ class Yireo_GoogleTagManager_Observer_ProductListData
     protected $container;
 
     /**
+     * @var array
+     */
+    protected $allowedBlocks;
+
+    /**
      * Yireo_GoogleTagManager_Model_Observer constructor.
      */
     public function __construct()
@@ -36,6 +41,7 @@ class Yireo_GoogleTagManager_Observer_ProductListData
         $this->helper = Mage::helper('googletagmanager');
         $this->scriptHelper = Mage::helper('googletagmanager/script');
         $this->container = Mage::getSingleton('googletagmanager/container');
+        $this->allowedBlocks = ['product_list' => 'Products list', 'search_result_list' => 'Search results'];
     }
 
     /**
@@ -44,6 +50,7 @@ class Yireo_GoogleTagManager_Observer_ProductListData
      * @param Varien_Event_Observer $observer
      *
      * @return $this
+     * @throws Mage_Core_Model_Store_Exception
      */
     public function execute(Varien_Event_Observer $observer)
     {
@@ -63,9 +70,9 @@ class Yireo_GoogleTagManager_Observer_ProductListData
 
     /**
      * @param Mage_Core_Block_Abstract $block
-     * @param Varien_Event $event
      *
      * @return bool
+     * @throws Mage_Core_Model_Store_Exception
      */
     protected function extendProductListBlock(Mage_Core_Block_Abstract $block)
     {
@@ -80,6 +87,7 @@ class Yireo_GoogleTagManager_Observer_ProductListData
         foreach ($block->getLoadedProductCollection() as $product) {
             $categoryProduct = $this->getProductData($product);
             $categoryProduct['position'] = $i;
+            $categoryProduct['list'] = $this->getImpressionFieldList($block);
             $categoryProducts[] = $categoryProduct;
             $i++;
         }
@@ -99,8 +107,7 @@ class Yireo_GoogleTagManager_Observer_ProductListData
      */
     protected function allowBlock($block)
     {
-        $allowedBlocks = ['product_list', 'search_result_list'];
-        if (!in_array($block->getNameInLayout(), $allowedBlocks)) {
+        if (!in_array($block->getNameInLayout(), array_keys($this->allowedBlocks))) {
             return false;
         }
 
@@ -108,9 +115,20 @@ class Yireo_GoogleTagManager_Observer_ProductListData
     }
 
     /**
+     * @param Mage_Core_Block_Abstract $block
+     *
+     * @return string
+     */
+    protected function getImpressionFieldList($block)
+    {
+        return isset($this->allowedBlocks[$block->getNameInLayout()]) ? $this->allowedBlocks[$block->getNameInLayout()] : '';
+    }
+
+    /**
      * @param Mage_Catalog_Model_Product $product
      *
      * @return array
+     * @throws Mage_Core_Model_Store_Exception
      */
     protected function getProductData(Mage_Catalog_Model_Product $product)
     {
@@ -122,7 +140,7 @@ class Yireo_GoogleTagManager_Observer_ProductListData
         $data['id'] = $product->getId();
         $data['name'] = $this->quoteEscape($product->getName());
         $data['sku'] = $this->quoteEscape($product->getSku());
-        $data['price'] = $price;
+        $data['price'] = $this->formatPrice($price);
         $data['priceexcludingtax'] = number_format($price - $tax, 2);
         $data['tax'] = number_format($tax, 2);
         $data['taxrate'] = $taxPercentage;
@@ -157,6 +175,7 @@ class Yireo_GoogleTagManager_Observer_ProductListData
      * @param Mage_Catalog_Model_Product $product
      *
      * @return double
+     * @throws Mage_Core_Model_Store_Exception
      */
     protected function getTaxPercentage(Mage_Catalog_Model_Product $product)
     {
@@ -188,5 +207,15 @@ class Yireo_GoogleTagManager_Observer_ProductListData
     protected function quoteEscape($string)
     {
         return Mage::helper('core')->quoteEscape($string);
+    }
+
+    /**
+     * @param string $price
+     *
+     * @return string
+     */
+    protected function formatPrice($price)
+    {
+        return number_format($price, 2);
     }
 }

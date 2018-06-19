@@ -7,27 +7,29 @@
  * @copyright   Copyright (c) 2016 Yireo (https://www.yireo.com/)
  * @license     Open Software License
  */
-
 /**
  * To use this code, add the following line to your PHTML templates:
  * <?php $gtm = Mage::helper('googletagmanager/script'); ?>
- * <?php echo $gtm->onClickProduct($_product); ?>
+ * <?php echo $gtm->onRemoveAll($_product); ?>
  */
-
 if ( !$this->isEnabled() ) {
     return;
 }
-
 /** @var Mage_Catalog_Model_Product $product */
 $product = $this->getProduct();
+$qty = $product->getQty();
+
 $data = array(
-    'event' => 'productClick',
+    'event' => 'removeFromCart',
     'ecommerce' => array(
-        'click' => array(
+        'currencyCode' => $this->getScriptHelper()->getCurrencyCode(),
+        'remove' => array(
             'products' => array(
                 array(
-                    'name' => $this->quoteEscape($product->getName()),
+                    'name' => $this->quoteEscape(str_replace("'", "", $product->getName())),
                     'id' => $product->getId(),
+                    'price' => $this->formatPrice($product->getPrice()) * $qty,
+                    'quantity' => $qty,
                 )
             )
         )
